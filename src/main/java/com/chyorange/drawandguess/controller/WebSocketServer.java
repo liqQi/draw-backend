@@ -133,9 +133,39 @@ public class WebSocketServer {
                         userReady = false;
                         notifyRoomUserStatusChange();
                         break;
+                    case WsMessage.USER_DRAW_ONE_PATH:
+                        notifyUserDrawPath(wsMessage.getMsg());
+                        break;
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    private void notifyUserDrawPath(String msg) {
+        if (userRoomMap.containsKey(userId)) {
+            String roomId = userRoomMap.get(userId);
+            if (roomMap.containsKey(roomId)) {
+                Room room = roomMap.get(roomId);
+                List<String> roomUsers = room.getRoomUsers();
+                for (String roomUser : roomUsers) {
+                    if(roomUser.equals(this.userId)){
+                        continue;
+                    }
+                    if (webSocketMap.containsKey(roomUser)) {
+                        WebSocketServer webSocketServer = webSocketMap.get(roomUser);
+                        WsMessage wsMessage = new WsMessage();
+                        wsMessage.setAction(WsMessage.USER_DRAW_ONE_PATH);
+                        wsMessage.setFromUserId("-1");
+                        wsMessage.setMsg(msg);
+                        try {
+                            webSocketServer.sendMessage(wsMessage);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
             }
         }
     }
@@ -147,10 +177,9 @@ public class WebSocketServer {
                 Room room = roomMap.get(roomId);
                 List<String> roomUsers = room.getRoomUsers();
                 for (String roomUser : roomUsers) {
-                    User user = userService.getUser(roomUser);
-                    String sendToUserId = user.getId().toString();
-                    if (webSocketMap.containsKey(sendToUserId)) {
-                        WebSocketServer webSocketServer = webSocketMap.get(sendToUserId);
+                    User user = userService.getUser(userId);
+                    if (webSocketMap.containsKey(roomUser)) {
+                        WebSocketServer webSocketServer = webSocketMap.get(roomUser);
                         WsMessage wsMessage = new WsMessage();
                         wsMessage.setAction(WsMessage.SERVER_NOTIFY);
                         wsMessage.setFromUserId("-1");
@@ -191,6 +220,17 @@ public class WebSocketServer {
     }
 
     private void notifyRoomReady(Room room, List<String> roomUsers) {
+        int cursor;
+        if (roomDrawerCursor.containsKey(room.getId())) {
+            cursor = roomDrawerCursor.get(room.getId());
+            cursor++;
+            if (cursor == roomUsers.size()) {
+                cursor = 0;
+            }
+        } else {
+            cursor = 0;
+        }
+        roomDrawerCursor.put(room.getId(), cursor);
         for (String roomUser : roomUsers) {
             if (webSocketMap.containsKey(roomUser)) {
                 WebSocketServer webSocketServer = webSocketMap.get(roomUser);
@@ -198,39 +238,23 @@ public class WebSocketServer {
                 wsMessage.setAction(WsMessage.SERVER_NOTIFY);
                 wsMessage.setFromUserId("-1");
                 wsMessage.setMsg("所有人都准备好了！游戏开始！");
-                try {
-                    webSocketServer.sendMessage(wsMessage);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                int cursor;
-                if (roomDrawerCursor.containsKey(room.getId())) {
-                    cursor = roomDrawerCursor.get(room.getId());
-                    cursor++;
-                    if (cursor == roomUsers.size()) {
-                        cursor = 0;
-                    }
-                } else {
-                    cursor = 0;
-                }
                 String currentUserId = roomUsers.get(cursor);
                 User user = userService.getUser(currentUserId);
                 WsMessage wsMessageRoomReady = new WsMessage();
-                wsMessage.setAction(WsMessage.ROOM_READY);
+                wsMessageRoomReady.setAction(WsMessage.ROOM_READY);
                 Question question = WordService.getInstance().getQuestion();
                 DrawingUser drawingUser = new DrawingUser();
                 drawingUser.setDrawingUserId(currentUserId);
                 drawingUser.setDrawingUserNickName(user.getNickName());
                 drawingUser.setQuestion(question);
-                roomDrawerCursor.put(room.getId(), cursor);
-                wsMessage.setMsg(GsonUtils.toJson(drawingUser));
-                wsMessage.setFromUserId("-1");
+                wsMessageRoomReady.setMsg(GsonUtils.toJson(drawingUser));
+                wsMessageRoomReady.setFromUserId("-1");
                 try {
+                    webSocketServer.sendMessage(wsMessage);
                     webSocketServer.sendMessage(wsMessageRoomReady);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
             }
         }
 

@@ -7,7 +7,9 @@ public class WsMessage {
     public static final int ROOM_READY = 301;
     public static final int ROOM_WAIT = 302;
 
-    public static final int SERVER_NOTIFY = 101;;
+    public static final int SERVER_NOTIFY = 101;
+
+    public static final int USER_DRAW_ONE_PATH = 401;
 
     int action;
     String data;

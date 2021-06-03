@@ -1,8 +1,10 @@
 package com.chyorange.drawandguess.services;
 
 import com.chyorange.drawandguess.models.Question;
+import org.springframework.util.ResourceUtils;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,8 +30,8 @@ public class WordService {
 
     public void init() {
         try {
-            String out = WordService.class.getResource("out.txt").getFile();
-            FileReader reader = new FileReader(out);
+            File file = ResourceUtils.getFile("classpath:out.txt");
+            FileReader reader = new FileReader(file);
             BufferedReader br = new BufferedReader(reader);
             String s;
             while ((s = br.readLine()) != null) {
